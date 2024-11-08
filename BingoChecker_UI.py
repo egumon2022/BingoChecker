@@ -7,6 +7,9 @@ Created on Fri Nov  8 21:02:00 2024
 
 import streamlit as st
 import pandas as pd
+import cv2
+import pytesseract
+import numpy as np
 
 class BingoCard:
     def __init__(self, card_number, numbers):
@@ -53,6 +56,36 @@ class BingoCard:
 
         return new_bingo_patterns
 
+def upload_and_process_bingo_card():
+    # 写真のアップロード
+    uploaded_file = st.file_uploader("ビンゴカードの写真をアップロードしてください")
+    if uploaded_file is not None:
+        # 写真を OpenCV で読み込む
+        img = cv2.imdecode(np.frombuffer(uploaded_file.read(), np.uint8), cv2.IMREAD_COLOR)
+
+        # 数字の認識
+        numbers = []
+        for i in range(5):
+            row = []
+            for j in range(5):
+                x = j * 100
+                y = i * 100
+                roi = img[y:y+100, x:x+100]
+                number = pytesseract.image_to_string(roi, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
+                if number.isdigit():
+                    row.append(int(number))
+                else:
+                    row.append(0)
+            numbers.append(row)
+
+        # BingoCard オブジェクトの作成
+        card_number = st.text_input("カード番号を入力してください")
+        card = BingoCard(card_number, numbers)
+        st.session_state.cards.append(card)
+        st.success(f"カード No.{card_number} が登録されました")
+
+    return
+
 def create_bingo_display(card):
     # Create DataFrame for display
     display_data = []
@@ -74,6 +107,9 @@ def main():
     st.set_page_config(layout="wide")
     # アプリケーションのタイトル
     st.title("ビンゴゲーム")
+    # 写真からのビンゴカード登録
+    st.subheader("ビンゴカードの登録")
+    upload_and_process_bingo_card()
     
     # Initialize session state
     if 'cards' not in st.session_state:
