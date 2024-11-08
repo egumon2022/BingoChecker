@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov  8 19:00:00 2024
+Created on Fri Nov  8 21:02:00 2024
 
 @author: egumon
 """
@@ -70,6 +70,8 @@ def create_bingo_display(card):
     return pd.DataFrame(display_data)
 
 def main():
+    # layout設定
+    st.set_page_config(layout="wide")
     # アプリケーションのタイトル
     st.title("ビンゴゲーム")
     
@@ -129,13 +131,8 @@ def main():
         if card.bingo_lines:
             st.write("ビンゴライン:", list(card.bingo_lines))
         st.divider()
-
-    # Reset button
-    if st.button("ゲームをリセット"):
-        st.session_state.clear()
-        st.experimental_rerun()
     
-    st.write("©egumon 2024/11/8_version_2", unsafe_allow_html=True)
+    st.write("©egumon 2024/11/8_version_3", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
