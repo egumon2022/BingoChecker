@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov  8 21:02:00 2024
+Created on Fri Nov  8 22:00:00 2024
 
 @author: egumon
 """
 
 import streamlit as st
 import pandas as pd
-import cv2
-import pytesseract
-import numpy as np
 
 class BingoCard:
     def __init__(self, card_number, numbers):
@@ -55,40 +52,35 @@ class BingoCard:
             self.bingo_lines.add("diagonal2")
 
         return new_bingo_patterns
+    
+def create_bingo_card_manually():
+    st.subheader("ビンゴカードの手動登録")
 
-def upload_and_process_bingo_card():
-    # 写真のアップロード
-    uploaded_file = st.file_uploader("ビンゴカードの写真をアップロードしてください")
-    if uploaded_file is not None:
-        # 写真を OpenCV で読み込む
-        img = cv2.imdecode(np.frombuffer(uploaded_file.read(), np.uint8), cv2.IMREAD_COLOR)
+    # Get card number
+    card_number = st.text_input("＊カード番号を入力してください", key="card_number")
 
-        # 数字の認識
-        numbers = []
-        for i in range(5):
-            row = []
-            for j in range(5):
-                x = j * 100
-                y = i * 100
-                roi = img[y:y+100, x:x+100]
-                number = pytesseract.image_to_string(roi, config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
-                if number.isdigit():
-                    row.append(int(number))
-                else:
-                    row.append(0)
-            numbers.append(row)
+    # Get bingo numbers
+    numbers = []
+    for i in range(5):
+        key = f"row_{i+1}"  # Set a key for each row to store in session state
+        if i!=2:
+            row = st.text_input(f"行{i+1}の数字を空白区切りで入力してください (例: 13 22 42 49 61)",key=key)
+            numbers.append([int(num) for num in row.split()])
+        else:
+            row = st.text_input("※真ん中（FREE）は 0 を入力してください (例: 13 22 0(=FREE) 49 61)",key=key)
+            numbers.append([int(num) for num in row.split()])
 
-        # BingoCard オブジェクトの作成
-        card_number = st.text_input("カード番号を入力してください")
-        card = BingoCard(card_number, numbers)
-        st.session_state.cards.append(card)
-        st.success(f"カード No.{card_number} が登録されました")
-
-    return
+    # Create BingoCard object
+    card = BingoCard(card_number, numbers)
+    return card
 
 def create_bingo_display(card):
     # Create DataFrame for display
     display_data = []
+    if len(card.numbers) != 5 or any(len(row) != 5 for row in card.numbers):
+        st.error("Invalid bingo card format: The card should have a 5x5 grid of numbers.")
+        return pd.DataFrame()
+
     for i in range(5):
         row = []
         for j in range(5):
@@ -102,37 +94,44 @@ def create_bingo_display(card):
         display_data.append(row)
     return pd.DataFrame(display_data)
 
+def clear_inputs():
+    # Clear the session state for each input field
+    st.session_state["card_number"] = ""
+    for i in range(1, 6):
+        st.session_state[f"row_{i}"] = ""
+
 def main():
-    # layout設定
+    # layout Setting
     st.set_page_config(layout="wide")
-    # アプリケーションのタイトル
-    st.title("ビンゴゲーム")
-    # 写真からのビンゴカード登録
-    st.subheader("ビンゴカードの登録")
-    upload_and_process_bingo_card()
+    # Title for APP
+    st.title("BINGO GAME Checker")
+    st.markdown(" <br> ********************************", unsafe_allow_html=True)
     
     # Initialize session state
     if 'cards' not in st.session_state:
-        st.session_state.cards = [
-            BingoCard(5890, [
-                [13, 22, 42, 49, 61],
-                [6, 21, 38, 57, 64],
-                [2, 16, 0, 55, 66],
-                [11, 23, 35, 58, 65],
-                [5, 29, 45, 53, 70]
-            ]),
-            BingoCard(4119, [
-                [4, 19, 41, 46, 74],
-                [7, 26, 44, 58, 70],
-                [12, 27, 0, 60, 65],
-                [11, 16, 36, 56, 73],
-                [8, 17, 33, 51, 63]
-            ])
-        ]
+        st.session_state.cards = []
     
     if 'used_numbers' not in st.session_state:
         st.session_state.used_numbers = set()
 
+    # Manual card registration
+    registration_option = st.selectbox("ビンゴカードの登録方法を選択", ["自動認識", "手動入力", "今はしない"])
+    if registration_option == "手動入力":
+        new_card = create_bingo_card_manually()
+        if st.button("カードを登録する"):
+            if any(card.card_number == new_card.card_number for card in st.session_state.cards):
+                st.warning("このカード番号は既に登録されています")
+            else:
+                st.session_state.cards.append(new_card)
+                st.success(f"カード No.{new_card.card_number} が登録されました")
+                # 入力内容をクリア
+                clear_inputs()  # Clear functionを呼び出し
+    elif registration_option == "今はしない":
+        pass
+    # TODO: Implement automatic registration
+
+    # Display called numbers
+    st.subheader("＿＿今、呼ばれた番号＿＿")
     # Input section
     col1, col2 = st.columns([1, 5])
     with col1:
@@ -154,21 +153,29 @@ def main():
                                 st.write(f"- {pattern}")
 
     # Display used numbers
-    #st.write("使用された番号:", sorted(list(st.session_state.used_numbers)))
     st.subheader("これまでに呼ばれた番号")
     used_numbers_str = ", ".join(map(str, sorted(list(st.session_state.used_numbers))))
     st.markdown(f"`{used_numbers_str}`")
+
+    # Display Bingo'd card numbers
+    st.subheader("BINGOになったカードまとめ")
+    bingo_card_numbers = [card.card_number for card in st.session_state.cards if card.bingo_lines]
+    bingo_card_numbers_str = ", ".join(map(str, sorted(bingo_card_numbers)))
+    st.markdown(f"`{bingo_card_numbers_str}`")
     
     # Display cards
-    st.subheader("ビンゴカード")
-    for card in st.session_state.cards:
+    st.subheader("～～ビンゴカード一覧～～")
+    for i, card in enumerate(st.session_state.cards):
         st.write(f"Card No.{card.card_number}")
         st.dataframe(create_bingo_display(card), use_container_width=True)
         if card.bingo_lines:
             st.write("ビンゴライン:", list(card.bingo_lines))
+        if st.button(f"カード No.{card.card_number}を削除", key=f"delete_{i}"):
+            st.session_state.cards.pop(i)
+            st.success(f"カード No.{card.card_number} を削除しました")
         st.divider()
     
-    st.write("©egumon 2024/11/8_version_3", unsafe_allow_html=True)
+    st.write("©egumon2022 2024/11/8 version_5", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
