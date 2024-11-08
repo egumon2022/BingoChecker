@@ -134,6 +134,8 @@ def main():
     if st.button("ゲームをリセット"):
         st.session_state.clear()
         st.experimental_rerun()
+    
+    st.write("©egumon 2024/11/8_version_2", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
