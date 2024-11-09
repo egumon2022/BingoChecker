@@ -52,27 +52,38 @@ class BingoCard:
             self.bingo_lines.add("diagonal2")
 
         return new_bingo_patterns
-    
+
 def create_bingo_card_manually():
     st.subheader("ビンゴカードの手動登録")
 
     # Get card number
-    card_number = st.text_input("＊カード番号を入力してください", key="card_number")
+    card_number = st.text_input("＊カード番号を入力してください", key="card_number_input")
 
     # Get bingo numbers
     numbers = []
+    rows_valid = True
     for i in range(5):
-        key = f"row_{i+1}"  # Set a key for each row to store in session state
-        if i!=2:
-            row = st.text_input(f"行{i+1}の数字を空白区切りで入力してください (例: 13 22 42 49 61)",key=key)
-            numbers.append([int(num) for num in row.split()])
+        if i != 2:
+            prompt = f"行{i+1}の数字を空白区切りで入力してください (例: 13 22 42 49 61)"
         else:
-            row = st.text_input("※真ん中（FREE）は 0 を入力してください (例: 13 22 0(=FREE) 49 61)",key=key)
-            numbers.append([int(num) for num in row.split()])
+            prompt = "※真ん中（FREE）は 0 を入力してください (例: 13 22 0(=FREE) 49 61)"
+        
+        row = st.text_input(prompt, key=f"row_input_{i}")
+        
+        try:
+            if row:
+                row_numbers = [int(num) for num in row.split()]
+                if len(row_numbers) == 5:
+                    numbers.append(row_numbers)
+                else:
+                    rows_valid = False
+        except ValueError:
+            rows_valid = False
 
-    # Create BingoCard object
-    card = BingoCard(card_number, numbers)
-    return card
+    # Create BingoCard object only if all inputs are valid
+    if card_number and len(numbers) == 5 and rows_valid:
+        return BingoCard(card_number, numbers)
+    return None
 
 def create_bingo_display(card):
     # Create DataFrame for display
@@ -94,12 +105,6 @@ def create_bingo_display(card):
         display_data.append(row)
     return pd.DataFrame(display_data)
 
-def clear_inputs():
-    # Clear the session state for each input field
-    st.session_state["card_number"] = ""
-    for i in range(1, 6):
-        st.session_state[f"row_{i}"] = ""
-
 def main():
     # layout Setting
     st.set_page_config(layout="wide")
@@ -114,25 +119,33 @@ def main():
     if 'used_numbers' not in st.session_state:
         st.session_state.used_numbers = set()
 
+    # フォームリセットフラグの初期化
+    if 'reset_form' not in st.session_state:
+        st.session_state.reset_form = False
+
     # Manual card registration
     registration_option = st.selectbox("ビンゴカードの登録方法を選択", ["自動認識", "手動入力", "今はしない"])
     if registration_option == "手動入力":
         new_card = create_bingo_card_manually()
         if st.button("カードを登録する"):
-            if any(card.card_number == new_card.card_number for card in st.session_state.cards):
-                st.warning("このカード番号は既に登録されています")
+            if new_card is not None:
+                if any(card.card_number == new_card.card_number for card in st.session_state.cards):
+                    st.warning("このカード番号は既に登録されています")
+                else:
+                    st.session_state.cards.append(new_card)
+                    st.success(f"カード No.{new_card.card_number} が登録されました")
+                    # フォームリセットフラグを設定
+                    st.session_state.reset_form = True
+                    # ページを再読み込み
+                    st.rerun()
             else:
-                st.session_state.cards.append(new_card)
-                st.success(f"カード No.{new_card.card_number} が登録されました")
-                # 入力内容をクリア
-                clear_inputs()  # Clear functionを呼び出し
+                st.error("全ての入力フィールドを正しく入力してください")
     elif registration_option == "今はしない":
         pass
     # TODO: Implement automatic registration
 
     # Display called numbers
     st.subheader("＿＿今、呼ばれた番号＿＿")
-    # Input section
     col1, col2 = st.columns([1, 5])
     with col1:
         number = st.number_input("番号を入力してください (1-75):", min_value=1, max_value=75, step=1)
@@ -175,7 +188,7 @@ def main():
             st.success(f"カード No.{card.card_number} を削除しました")
         st.divider()
     
-    st.write("©egumon2022 2024/11/8 version_5", unsafe_allow_html=True)
+    st.write("©egumon2022 2024/11/9 version_6", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
