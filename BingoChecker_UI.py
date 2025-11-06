@@ -150,20 +150,30 @@ def main():
     st.title("BINGO GAME Checker")
     st.markdown(" <br> ********************************", unsafe_allow_html=True)
     
-    # 【追加部分】アクセスIDの入力とセッションステートへの保存
+    # 【修正部分】アクセスIDの入力とセッションステートへの保存
     if 'access_id' not in st.session_state:
-        st.sidebar.subheader("アクセスID設定")
-        user_input = st.sidebar.text_input("アクセスID（任意の半角英数字）を入力してください", key="user_access_id_input")
-        if st.sidebar.button("IDを決定"):
-            if user_input:
-                st.session_state.access_id = user_input
-                st.rerun()
-            else:
-                st.sidebar.error("IDを入力してください")
+        # メイン画面にコンテナを配置して入力エリアを作成
+        with st.container():
+            st.subheader("🔑 アクセスID設定")
+            st.warning("アクセスIDは、お客様ご自身のデータ（ビンゴカードやマーク状態）を分離・保存するために必要です。任意の半角英数字を入力してください。")
+            
+            col_input, col_button = st.columns([3, 1])
+            with col_input:
+                user_input = st.text_input("アクセスID（任意の半角英数字）を入力してください", key="user_access_id_input_main")
+            
+            with col_button:
+                # ボタンを少し下に配置して見やすくする
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("IDを決定"):
+                    if user_input:
+                        st.session_state.access_id = user_input
+                        st.rerun()
+                    else:
+                        st.error("IDを入力してください")
         
         # IDが未設定の場合は、これ以降の処理を中断
         if 'access_id' not in st.session_state:
-            st.warning("左のサイドバーからアクセスIDを入力して、データを分離してください。")
+            # 既に上のコンテナで警告を表示しているので、returnで中断
             return
     
     # ユーザー固有のデータファイルパスを定義
