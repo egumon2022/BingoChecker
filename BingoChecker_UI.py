@@ -7,6 +7,10 @@ Created on Fri Nov  9 17:00:00 2024
 
 import streamlit as st
 import pandas as pd
+import json # <--- 追加
+import os   # <--- ファイルの存在チェックのために追加
+
+DATA_FILE = "bingo_data.json" # 保存ファイル名を定義
 
 class BingoCard:
     def __init__(self, card_number, numbers):
@@ -52,6 +56,16 @@ class BingoCard:
             self.bingo_lines.add("diagonal2")
 
         return new_bingo_patterns
+    
+    def to_dict(self): # <--- 追加: 辞書に変換するメソッド
+        return {
+            "card_number": self.card_number,
+            "numbers": self.numbers,
+            # marked は True/False の二重リストなのでそのまま保存可能
+            "marked": self.marked,
+            # setはJSONにできないのでlistに変換
+            "bingo_lines": list(self.bingo_lines) 
+        }
 
 def create_bingo_card_manually():
     st.subheader("ビンゴカードの手動登録")
@@ -105,6 +119,28 @@ def create_bingo_display(card):
         display_data.append(row)
     return pd.DataFrame(display_data)
 
+def save_cards(cards):
+    """ビンゴカードのリストをJSONファイルに保存する"""
+    data_to_save = [card.to_dict() for card in cards]
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data_to_save, f, ensure_ascii=False, indent=4)
+
+def load_cards():
+    """JSONファイルからビンゴカードを読み込む"""
+    if not os.path.exists(DATA_FILE):
+        return []
+        
+    with open(DATA_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        cards = []
+        for d in data:
+            # 辞書からBingoCardオブジェクトを再構築
+            card = BingoCard(d['card_number'], d['numbers'])
+            card.marked = d['marked']
+            card.bingo_lines = set(d['bingo_lines']) # setに戻す
+            cards.append(card)
+        return cards
+
 def main():
     # layout Setting
     st.set_page_config(layout="wide")
@@ -114,7 +150,8 @@ def main():
     
     # Initialize session state
     if 'cards' not in st.session_state:
-        st.session_state.cards = []
+        # アプリ起動時にJSONファイルからカードを読み込む
+        st.session_state.cards = load_cards()
     
     if 'used_numbers' not in st.session_state:
         st.session_state.used_numbers = set()
@@ -133,6 +170,8 @@ def main():
                     st.warning("このカード番号は既に登録されています")
                 else:
                     st.session_state.cards.append(new_card)
+                    # ★ カードを登録した後、ファイルを保存
+                    save_cards(st.session_state.cards)
                     st.success(f"カード No.{new_card.card_number} が登録されました")
                     # フォームリセットフラグを設定
                     st.session_state.reset_form = True
@@ -155,15 +194,25 @@ def main():
                 st.warning(f"番号 {number} は既に使用されています")
             else:
                 st.session_state.used_numbers.add(number)
+                
+                # マーク/ビンゴ判定後にカードデータを保存する必要があるかチェック
+                data_changed = False
                 for card in st.session_state.cards:
                     if card.mark_number(number):
+                        data_changed = True # マークされたらデータ変更フラグを立てる
                         st.success(f"Card No.{card.card_number}でマークされました！")
-                        patterns = card.check_bingo()
-                        if patterns:
-                            st.balloons()
-                            st.success(f"BINGO! Card No.{card.card_number}で新しいビンゴが発生しました！")
-                            for pattern in patterns:
-                                st.write(f"- {pattern}")
+                    
+                    patterns = card.check_bingo()
+                    if patterns:
+                        data_changed = True # ビンゴが発生してもデータ変更フラグを立てる
+                        
+                        st.balloons()
+                        st.success(f"BINGO! Card No.{card.card_number}で新しいビンゴが発生しました！")
+                        for pattern in patterns:
+                            st.write(f"- {pattern}")
+                # ★ データが変更された場合、ファイルを保存
+                if data_changed: 
+                    save_cards(st.session_state.cards)
 
     # Display used numbers
     st.subheader("これまでに呼ばれた番号")
@@ -184,9 +233,12 @@ def main():
         if card.bingo_lines:
             st.write("ビンゴライン:", list(card.bingo_lines))
         if st.button(f"カード No.{card.card_number}を削除", key=f"delete_{i}"):
+            removed_card_number = st.session_state.cards[i].card_number
             st.session_state.cards.pop(i)
-            st.success(f"カード No.{card.card_number} を削除しました")
-        st.divider()
+            # ★ 削除後、ファイルを保存
+            save_cards(st.session_state.cards) 
+            st.success(f"カード No.{removed_card_number} を削除しました")
+            st.rerun() # 削除後に即座に表示を更新するためリロード
     
     st.write("©egumon2022 2024/11/9 version_6", unsafe_allow_html=True)
 
