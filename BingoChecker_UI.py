@@ -67,6 +67,40 @@ class BingoCard:
             "bingo_lines": list(self.bingo_lines) 
         }
 
+def create_bingo_card_manually():
+    st.subheader("ビンゴカードの手動登録")
+
+    # Get card number
+    # st.session_state.card_number_input をリセット対象にする
+    card_number = st.text_input("＊カード番号を入力してください", key="card_number_input")
+    
+    # Get bingo numbers
+    numbers = []
+    rows_valid = True
+    for i in range(5):
+        if i != 2:
+            prompt = f"行{i+1}の数字を空白区切りで入力してください (例: 13 22 42 49 61)"
+        else:
+            prompt = "※真ん中（FREE）は 0 を入力してください (例: 13 22 0(=FREE) 49 61)"
+        
+        # st.session_state.row_input_i をリセット対象にする
+        row = st.text_input(prompt, key=f"row_input_{i}")
+        
+        try:
+            if row:
+                row_numbers = [int(num) for num in row.split()]
+                if len(row_numbers) == 5:
+                    numbers.append(row_numbers)
+                else:
+                    rows_valid = False
+        except ValueError:
+            rows_valid = False
+
+    # Create BingoCard object only if all inputs are valid
+    if card_number and len(numbers) == 5 and rows_valid:
+        return BingoCard(card_number, numbers)
+    return None
+
 def create_bingo_display(card):
     # Create DataFrame for display
     display_data = []
@@ -110,16 +144,7 @@ def load_cards(data_file): # <-- data_file を引数に追加
             card.bingo_lines = set(d['bingo_lines']) # setに戻す
             cards.append(card)
         return cards
-def reset_manual_input_fields():
-    """手動登録フォームの入力フィールドをセッションステートから削除する"""
-    if "card_number_input" in st.session_state:
-        del st.session_state["card_number_input"]
-        
-    for i in range(5):
-        key = f"row_input_{i}"
-        if key in st.session_state:
-            del st.session_state[key]
-            
+
 def main():
     # layout Setting
     st.set_page_config(layout="wide")
@@ -166,11 +191,23 @@ def main():
     if 'used_numbers' not in st.session_state:
         st.session_state.used_numbers = set()
 
+    # 【削除】フォームリセットフラグの初期化は不要
+    # if 'reset_form' not in st.session_state:
+    #     st.session_state.reset_form = False
+
     # 【新規追加】登録モードの状態管理
     if 'registration_mode' not in st.session_state:
         # False: ビンゴモード (初期状態) / True: 登録モード
         st.session_state.registration_mode = False 
         
+    # 【削除】旧バージョンのプルダウン制御ロジックは不要
+    # if 'registration_mode_select_index' not in st.session_state:
+    #      st.session_state['registration_mode_select_index'] = 0 
+
+    # 【削除】旧バージョンのプルダウンウィジェット全体を削除
+    # registration_options = ["今はしない", "手動入力", "画像認識(準備中)"] 
+    # registration_option = st.selectbox(...)
+
     st.subheader("⚙️ **ビンゴカードの管理モード**")
     col_reg_btn, col_start_btn, col_other_btn = st.columns([1, 1, 1])
 
@@ -200,73 +237,43 @@ def main():
     # Manual card registration (登録モードの場合にのみ表示)
     if st.session_state.registration_mode:
         
-        # st.form でフォーム全体をラップし、フォーム送信時にリセットさせる
-        with st.form(key='manual_bingo_card_form'):
-            
-            st.subheader("✍️ **カード登録フォーム**")
-            
-            # フォーム内の変数定義
-            card_number = st.text_input("🆔 **カード番号を入力してください**", key="form_card_number_input")
-            
-            numbers = []
-            rows_valid = True
-            
-            # 5x5の数字入力フィールドを定義
-            for i in range(5):
-                if i != 2:
-                    prompt = f"行{i+1}の数字を空白区切りで入力してください (例: 13 22 42 49 61)"
+        # 連続登録しやすいように、登録後もフォームを維持
+        
+        new_card = create_bingo_card_manually()
+        # ボタンのキーは不要なので削除
+        if st.button("💾 このカードを登録し、次へ", type="primary"): 
+            if new_card is not None:
+                if any(card.card_number == new_card.card_number for card in st.session_state.cards):
+                    st.warning("このカード番号は既に登録されています")
                 else:
-                    prompt = "※真ん中（FREE）は 0 を入力してください (例: 13 22 0 49 61)"
-                
-                # key を form_row_input_i に変更 (フォーム内キーは固有である必要があります)
-                # ここで入力が行われる
-                row_input = st.text_input(prompt, key=f"form_row_input_{i}") 
-                
-                # フォームが送信されるまで、入力値を使ってnumbersを構築
-                if row_input:
-                    try:
-                        row_numbers = [int(num) for num in row_input.split()]
-                        if len(row_numbers) == 5:
-                            numbers.append(row_numbers)
-                        else:
-                            rows_valid = False
-                    except ValueError:
-                        rows_valid = False
+                    st.session_state.cards.append(new_card)
+                    save_cards(st.session_state.cards, USER_DATA_FILE)
 
-            # フォーム送信ボタン
-            submitted = st.form_submit_button("💾 このカードを登録し、次へ", type="primary")
-
-            # フォーム送信後の処理
-            if submitted:
-                # フォーム送信時、 numbers が 5x5 のリストになっているか最終チェック
-                is_numbers_complete = (len(numbers) == 5)
-                
-                if card_number and is_numbers_complete and rows_valid:
-                    # 登録対象のカードオブジェクトを作成
-                    new_card = BingoCard(card_number, numbers)
+                    # 🚀 登録後の動作: フォームはクリアし、モードは維持
+                    st.success(
+                        f"🎉 **カード No.{new_card.card_number}** が登録されました！"
+                        f"引き続き、次のカードを登録できます。"
+                    )
                     
-                    if any(card.card_number == new_card.card_number for card in st.session_state.cards):
-                        st.warning("このカード番号は既に登録されています")
-                        # 警告を表示してもフォームはクリアされる
-                    else:
-                        st.session_state.cards.append(new_card)
-                        save_cards(st.session_state.cards, USER_DATA_FILE)
-
-                        # 成功メッセージはフォームの外に出して、クリアされないようにします
-                        st.session_state.last_registered_card = new_card.card_number
-                        st.rerun() # 成功メッセージを表示するために再描画
-                else:
-                    st.error("全ての入力フィールドを正しく入力してください")
-
+                    # 入力フィールドをクリア（連続登録のためにフォームをリセット）
+                    if "card_number_input" in st.session_state:
+                         del st.session_state["card_number_input"]
+                         
+                    for i in range(5):
+                        key = f"row_input_{i}"
+                        if key in st.session_state:
+                            del st.session_state[key]
+                        
+                    # フォームのリセットを反映させるために再描画
+                    #st.rerun() 
+            else:
+                st.error("全ての入力フィールドを正しく入力してください")
+        
         st.markdown("---")
-
-        # 登録成功メッセージをフォームの外で表示
-        if 'last_registered_card' in st.session_state:
-            st.success(
-                f"🎉 **カード No.{st.session_state.last_registered_card}** が登録されました！"
-                f"続けて次のカードを登録できます。"
-            )
-            del st.session_state['last_registered_card'] # 一度表示したら削除
+    
+    # 【削除】プルダウンでの手動入力/今はしない の判定ロジックはすべて削除
+    # elif registration_option == "今はしない":
+    #     pass
 
     # Display called numbers
     if not st.session_state.registration_mode: # 【条件追加】ビンゴモードのみ表示
@@ -329,7 +336,7 @@ def main():
             st.success(f"カード No.{removed_card_number} を削除しました")
             st.rerun() # 削除後に即座に表示を更新するためリロード
     
-    st.write("©egumon2022 2025/11/7 version_12", unsafe_allow_html=True)
+    st.write("©egumon2022 2025/11/7 version_11", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
