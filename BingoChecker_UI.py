@@ -201,18 +201,12 @@ def main():
     if 'registration_mode_select_index' not in st.session_state:
          st.session_state['registration_mode_select_index'] = 0 # 初期は「手動入力」
 
-    registration_options = ["手動入力", "今はしない", "画像認識(準備中)"]
+    registration_options = ["今はしない", "手動入力", "画像認識(準備中)"] # <--- 順番を修正
     registration_option = st.selectbox(
         "ビンゴカードの登録方法を選択", 
         registration_options, 
-        index=st.session_state.registration_mode_select_index, # セッションステートの値を使用
         key="registration_mode_select" # キーはそのまま
     )
-    
-    # 登録後に index を 1 に設定しているため、手動入力セクションをスキップする
-    if st.session_state.registration_mode_select_index == 1:
-        st.session_state.registration_mode_select_index = 0 # 次回のためにリセット
-        registration_option = "今はしない" # selectbox の表示とロジックを同期
         
     if registration_option == "手動入力":
         new_card = create_bingo_card_manually()
@@ -243,7 +237,7 @@ def main():
                         
                     # 2. セレクトボックスの値を「今はしない」に自動変更
                     if "registration_mode_select" in st.session_state:
-                         st.session_state["registration_mode_select_index"] = 1 # 「今はしない」のインデックス (0始まり)
+                         del st.session_state["registration_mode_select"]
 
                     # 3. 再描画で変更を反映
                     st.rerun() # ★フォームクリアとセレクトボックス変更のために必要です
