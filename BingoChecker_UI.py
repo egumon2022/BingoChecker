@@ -264,7 +264,7 @@ def main():
             st.success(f"カード No.{removed_card_number} を削除しました")
             st.rerun() # 削除後に即座に表示を更新するためリロード
     
-    st.write("©egumon2022 2025/11/7 version_7", unsafe_allow_html=True)
+    st.write("©egumon2022 2025/11/7 version_8", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
