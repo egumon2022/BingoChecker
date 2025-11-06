@@ -191,42 +191,65 @@ def main():
     if 'used_numbers' not in st.session_state:
         st.session_state.used_numbers = set()
 
-    # フォームリセットフラグの初期化
-    if 'reset_form' not in st.session_state:
-        st.session_state.reset_form = False
+    # 【削除】フォームリセットフラグの初期化は不要
+    # if 'reset_form' not in st.session_state:
+    #     st.session_state.reset_form = False
 
-    # Manual card registration
-    # registration_mode_select の初期値/現在値を制御する
-    # st.selectboxのindex引数に反映させるための初期化
-    if 'registration_mode_select_index' not in st.session_state:
-         st.session_state['registration_mode_select_index'] = 0 # 初期は「手動入力」
-
-    registration_options = ["今はしない", "手動入力", "画像認識(準備中)"] # <--- 順番を修正
-    registration_option = st.selectbox(
-        "ビンゴカードの登録方法を選択", 
-        registration_options, 
-        key="registration_mode_select" # キーはそのまま
-    )
+    # 【新規追加】登録モードの状態管理
+    if 'registration_mode' not in st.session_state:
+        # False: ビンゴモード (初期状態) / True: 登録モード
+        st.session_state.registration_mode = False 
         
-    if registration_option == "手動入力":
+    # 【削除】旧バージョンのプルダウン制御ロジックは不要
+    # if 'registration_mode_select_index' not in st.session_state:
+    #      st.session_state['registration_mode_select_index'] = 0 
+
+    # 【削除】旧バージョンのプルダウンウィジェット全体を削除
+    # registration_options = ["今はしない", "手動入力", "画像認識(準備中)"] 
+    # registration_option = st.selectbox(...)
+
+    st.subheader("📝 ビンゴカードの管理モード")
+    col_reg_btn, col_start_btn, col_other_btn = st.columns([1, 1, 1])
+
+    with col_reg_btn:
+        # カードを登録するモードに入るボタン
+        if st.button("▶️ カード登録フォームを開く", type="primary" if not st.session_state.registration_mode else "secondary", use_container_width=True):
+            st.session_state.registration_mode = True
+            st.rerun()
+
+    with col_start_btn:
+        # ビンゴモード（マーク画面）に入るボタン
+        if st.button("🎯 ビンゴマーク画面へ", type="primary" if st.session_state.registration_mode else "secondary", use_container_width=True):
+            st.session_state.registration_mode = False
+            st.rerun()
+            
+    with col_other_btn:
+        st.button("🖼️ 画像認識 (準備中)", disabled=True, use_container_width=True)
+
+    st.markdown("---") # 区切り線
+
+    # Manual card registration (登録モードの場合にのみ表示)
+    if st.session_state.registration_mode:
+        
+        # 連続登録しやすいように、登録後もフォームを維持
+        
         new_card = create_bingo_card_manually()
-        if st.button("カードを登録する"):
+        # ボタンのキーは不要なので削除
+        if st.button("💾 このカードを登録し、次へ", type="primary"): 
             if new_card is not None:
                 if any(card.card_number == new_card.card_number for card in st.session_state.cards):
                     st.warning("このカード番号は既に登録されています")
                 else:
                     st.session_state.cards.append(new_card)
-                    # 修正: USER_DATA_FILE を引数に追加
                     save_cards(st.session_state.cards, USER_DATA_FILE)
 
-                    # 🚀 登録後の動作を改善
+                    # 🚀 登録後の動作: フォームはクリアし、モードは維持
                     st.success(
                         f"🎉 **カード No.{new_card.card_number}** が登録されました！"
-                        f"下の**「～～ビンゴカード一覧～～」**でご確認ください。"
+                        f"引き続き、下のフォームで次のカードを登録できます。"
                     )
                     
-                    # 1. 入力フィールドをクリア（キーを削除することでフォームをリセット）
-                    #    キーを削除することで、rerun時に新しい空の入力ウィジェットが作成されます。
+                    # 入力フィールドをクリア（連続登録のためにフォームをリセット）
                     if "card_number_input" in st.session_state:
                          del st.session_state["card_number_input"]
                          
@@ -235,53 +258,53 @@ def main():
                         if key in st.session_state:
                             del st.session_state[key]
                         
-                    # 2. セレクトボックスの値を「今はしない」に自動変更
-                    if "registration_mode_select" in st.session_state:
-                         del st.session_state["registration_mode_select"]
-
-                    # 3. 再描画で変更を反映
-                    st.rerun() # ★フォームクリアとセレクトボックス変更のために必要です
+                    # フォームのリセットを反映させるために再描画
+                    st.rerun() 
             else:
                 st.error("全ての入力フィールドを正しく入力してください")
-    elif registration_option == "今はしない":
-        pass
-    # TODO: Implement automatic registration
+        
+        st.markdown("---")
+    
+    # 【削除】プルダウンでの手動入力/今はしない の判定ロジックはすべて削除
+    # elif registration_option == "今はしない":
+    #     pass
 
     # Display called numbers
-    st.subheader("＿＿今、呼ばれた番号＿＿")
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        number = st.number_input("番号を入力してください (1-75):", min_value=1, max_value=75, step=1)
-    with col2:
-        if st.button("マークする"):
-            if number in st.session_state.used_numbers:
-                st.warning(f"番号 {number} は既に使用されています")
-            else:
-                st.session_state.used_numbers.add(number)
-                
-                # マーク/ビンゴ判定後にカードデータを保存する必要があるかチェック
-                data_changed = False
-                for card in st.session_state.cards:
-                    if card.mark_number(number):
-                        data_changed = True # マークされたらデータ変更フラグを立てる
-                        st.success(f"Card No.{card.card_number}でマークされました！")
+    if not st.session_state.registration_mode: # 【条件追加】ビンゴモードのみ表示
+        st.subheader("🎯 今、呼ばれた番号")
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            number = st.number_input("番号を入力してください (1-75):", min_value=1, max_value=75, step=1, key="called_number_input")
+        with col2:
+            if st.button("✅ マークする", type="primary"):
+                if number in st.session_state.used_numbers:
+                    st.warning(f"番号 {number} は既に使用されています")
+                else:
+                    st.session_state.used_numbers.add(number)
                     
-                    patterns = card.check_bingo()
-                    if patterns:
-                        data_changed = True # ビンゴが発生してもデータ変更フラグを立てる
+                    # マーク/ビンゴ判定後にカードデータを保存する必要があるかチェック
+                    data_changed = False
+                    for card in st.session_state.cards:
+                        if card.mark_number(number):
+                            data_changed = True # マークされたらデータ変更フラグを立てる
+                            st.success(f"Card No.{card.card_number}でマークされました！")
                         
-                        st.balloons()
-                        st.success(f"BINGO! Card No.{card.card_number}で新しいビンゴが発生しました！")
-                        for pattern in patterns:
-                            st.write(f"- {pattern}")
-                  # --- [END] for ループ ---
-                
-                # ★ データが変更された場合、ファイルを保存 (ループの外で一度だけ呼び出す)
-                if data_changed: 
-                    save_cards(st.session_state.cards, USER_DATA_FILE)
+                        patterns = card.check_bingo()
+                        if patterns:
+                            data_changed = True # ビンゴが発生してもデータ変更フラグを立てる
+                            
+                            st.balloons()
+                            st.success(f"BINGO! Card No.{card.card_number}で新しいビンゴが発生しました！")
+                            for pattern in patterns:
+                                st.write(f"- {pattern}")
+                      # --- [END] for ループ ---
+                    
+                    # ★ データが変更された場合、ファイルを保存 (ループの外で一度だけ呼び出す)
+                    if data_changed: 
+                        save_cards(st.session_state.cards, USER_DATA_FILE)
 
     # Display used numbers
-    st.subheader("これまでに呼ばれた番号")
+    st.subheader("🗒️ これまでに呼ばれた番号")
     used_numbers_str = ", ".join(map(str, sorted(list(st.session_state.used_numbers))))
     st.markdown(f"`{used_numbers_str}`")
 
