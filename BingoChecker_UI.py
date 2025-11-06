@@ -71,8 +71,9 @@ def create_bingo_card_manually():
     st.subheader("ビンゴカードの手動登録")
 
     # Get card number
+    # st.session_state.card_number_input をリセット対象にする
     card_number = st.text_input("＊カード番号を入力してください", key="card_number_input")
-
+    
     # Get bingo numbers
     numbers = []
     rows_valid = True
@@ -82,6 +83,7 @@ def create_bingo_card_manually():
         else:
             prompt = "※真ん中（FREE）は 0 を入力してください (例: 13 22 0(=FREE) 49 61)"
         
+        # st.session_state.row_input_i をリセット対象にする
         row = st.text_input(prompt, key=f"row_input_{i}")
         
         try:
@@ -194,7 +196,12 @@ def main():
         st.session_state.reset_form = False
 
     # Manual card registration
-    registration_option = st.selectbox("ビンゴカードの登録方法を選択", ["自動認識", "手動入力", "今はしない"])
+    # registration_option の selectbox の定義を修正
+    registration_option = st.selectbox(
+        "ビンゴカードの登録方法を選択", 
+        ["手動入力", "今はしない", "画像認識(準備中)"], # 順番を変更し、「今はしない」を登録後に切り替えるターゲットにする
+        key="registration_mode_select" # キーを追加し、プログラムから値を操作できるようにする
+    )
     if registration_option == "手動入力":
         new_card = create_bingo_card_manually()
         if st.button("カードを登録する"):
@@ -205,11 +212,23 @@ def main():
                     st.session_state.cards.append(new_card)
                     # 修正: USER_DATA_FILE を引数に追加
                     save_cards(st.session_state.cards, USER_DATA_FILE)
-                    st.success(f"カード No.{new_card.card_number} が登録されました")
-                    # フォームリセットフラグを設定
-                    st.session_state.reset_form = True
-                    # ページを再読み込み
-                    st.rerun()
+
+                    # 🚀 登録後の動作を改善
+                    st.success(
+                        f"🎉 **カード No.{new_card.card_number}** が登録されました！"
+                        f"下の**「～～ビンゴカード一覧～～」**でご確認ください。"
+                    )
+                    
+                    # 1. 入力フィールドをクリア（キーをクリアすることでフォームをリセット）
+                    st.session_state.card_number_input = ""
+                    for i in range(5):
+                        st.session_state[f"row_input_{i}"] = ""
+                        
+                    # 2. セレクトボックスの値を「今はしない」に自動変更
+                    st.session_state.registration_mode_select = "今はしない"
+
+                    # 3. 再描画で変更を反映
+                    st.rerun() # ★フォームクリアとセレクトボックス変更のために必要です
             else:
                 st.error("全ての入力フィールドを正しく入力してください")
     elif registration_option == "今はしない":
