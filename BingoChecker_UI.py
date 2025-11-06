@@ -10,7 +10,7 @@ import pandas as pd
 import json # <--- 追加
 import os   # <--- ファイルの存在チェックのために追加
 
-DATA_FILE = "bingo_data.json" # 保存ファイル名を定義
+#DATA_FILE = "bingo_data.json" # 保存ファイル名を定義
 
 class BingoCard:
     def __init__(self, card_number, numbers):
@@ -119,22 +119,24 @@ def create_bingo_display(card):
         display_data.append(row)
     return pd.DataFrame(display_data)
 
-def save_cards(cards):
+def save_cards(cards, data_file): # <-- data_file を引数に追加
     """ビンゴカードのリストをJSONファイルに保存する"""
     data_to_save = [card.to_dict() for card in cards]
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+    # data_file を使用
+    with open(data_file, 'w', encoding='utf-8') as f:
         json.dump(data_to_save, f, ensure_ascii=False, indent=4)
 
-def load_cards():
+def load_cards(data_file): # <-- data_file を引数に追加
     """JSONファイルからビンゴカードを読み込む"""
-    if not os.path.exists(DATA_FILE):
+    # data_file を使用
+    if not os.path.exists(data_file):
         return []
         
-    with open(DATA_FILE, 'r', encoding='utf-8') as f:
+    with open(data_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
         cards = []
         for d in data:
-            # 辞書からBingoCardオブジェクトを再構築
+            # 辞書からBingoCardオブジェクトを再構築 (ここは変更なし)
             card = BingoCard(d['card_number'], d['numbers'])
             card.marked = d['marked']
             card.bingo_lines = set(d['bingo_lines']) # setに戻す
@@ -148,10 +150,31 @@ def main():
     st.title("BINGO GAME Checker")
     st.markdown(" <br> ********************************", unsafe_allow_html=True)
     
+    # 【追加部分】アクセスIDの入力とセッションステートへの保存
+    if 'access_id' not in st.session_state:
+        st.sidebar.subheader("アクセスID設定")
+        user_input = st.sidebar.text_input("アクセスID（任意の半角英数字）を入力してください", key="user_access_id_input")
+        if st.sidebar.button("IDを決定"):
+            if user_input:
+                st.session_state.access_id = user_input
+                st.rerun()
+            else:
+                st.sidebar.error("IDを入力してください")
+        
+        # IDが未設定の場合は、これ以降の処理を中断
+        if 'access_id' not in st.session_state:
+            st.warning("左のサイドバーからアクセスIDを入力して、データを分離してください。")
+            return
+    
+    # ユーザー固有のデータファイルパスを定義
+    # 例: "bingo_data_userA.json", "bingo_data_userB.json" のように分かれる
+    USER_DATA_FILE = f"bingo_data_{st.session_state.access_id}.json"
+
+
     # Initialize session state
     if 'cards' not in st.session_state:
-        # アプリ起動時にJSONファイルからカードを読み込む
-        st.session_state.cards = load_cards()
+        # 【修正】定義したユーザー固有のファイルパスを渡してロード
+        st.session_state.cards = load_cards(USER_DATA_FILE)
     
     if 'used_numbers' not in st.session_state:
         st.session_state.used_numbers = set()
@@ -170,8 +193,8 @@ def main():
                     st.warning("このカード番号は既に登録されています")
                 else:
                     st.session_state.cards.append(new_card)
-                    # ★ カードを登録した後、ファイルを保存
-                    save_cards(st.session_state.cards)
+                    # 修正: USER_DATA_FILE を引数に追加
+                    save_cards(st.session_state.cards, USER_DATA_FILE)
                     st.success(f"カード No.{new_card.card_number} が登録されました")
                     # フォームリセットフラグを設定
                     st.session_state.reset_form = True
@@ -210,9 +233,10 @@ def main():
                         st.success(f"BINGO! Card No.{card.card_number}で新しいビンゴが発生しました！")
                         for pattern in patterns:
                             st.write(f"- {pattern}")
-                # ★ データが変更された場合、ファイルを保存
-                if data_changed: 
-                    save_cards(st.session_state.cards)
+                    # ★ データが変更された場合、ファイルを保存
+                    if data_changed: 
+                    # 修正: USER_DATA_FILE を引数に追加
+                    save_cards(st.session_state.cards, USER_DATA_FILE)
 
     # Display used numbers
     st.subheader("これまでに呼ばれた番号")
@@ -235,8 +259,8 @@ def main():
         if st.button(f"カード No.{card.card_number}を削除", key=f"delete_{i}"):
             removed_card_number = st.session_state.cards[i].card_number
             st.session_state.cards.pop(i)
-            # ★ 削除後、ファイルを保存
-            save_cards(st.session_state.cards) 
+            # 修正: USER_DATA_FILE を引数に追加
+            save_cards(st.session_state.cards, USER_DATA_FILE)
             st.success(f"カード No.{removed_card_number} を削除しました")
             st.rerun() # 削除後に即座に表示を更新するためリロード
     
