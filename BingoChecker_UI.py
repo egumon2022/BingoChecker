@@ -235,8 +235,7 @@ def main():
                             st.write(f"- {pattern}")
                     # ★ データが変更された場合、ファイルを保存
                     if data_changed: 
-                    # 修正: USER_DATA_FILE を引数に追加
-                    save_cards(st.session_state.cards, USER_DATA_FILE)
+                        save_cards(st.session_state.cards, USER_DATA_FILE) # 修正: USER_DATA_FILE を引数に追加
 
     # Display used numbers
     st.subheader("これまでに呼ばれた番号")
