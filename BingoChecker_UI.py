@@ -219,10 +219,15 @@ def main():
                         f"下の**「～～ビンゴカード一覧～～」**でご確認ください。"
                     )
                     
-                    # 1. 入力フィールドをクリア（キーをクリアすることでフォームをリセット）
-                    st.session_state.card_number_input = ""
+                    # 1. 入力フィールドをクリア（キーを削除することでフォームをリセット）
+                    #    キーを削除することで、rerun時に新しい空の入力ウィジェットが作成されます。
+                    if "card_number_input" in st.session_state:
+                         del st.session_state["card_number_input"]
+                         
                     for i in range(5):
-                        st.session_state[f"row_input_{i}"] = ""
+                        key = f"row_input_{i}"
+                        if key in st.session_state:
+                            del st.session_state[key]
                         
                     # 2. セレクトボックスの値を「今はしない」に自動変更
                     st.session_state.registration_mode_select = "今はしない"
@@ -294,7 +299,7 @@ def main():
             st.success(f"カード No.{removed_card_number} を削除しました")
             st.rerun() # 削除後に即座に表示を更新するためリロード
     
-    st.write("©egumon2022 2025/11/7 version_9", unsafe_allow_html=True)
+    st.write("©egumon2022 2025/11/7 version_10", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
