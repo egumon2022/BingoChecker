@@ -67,40 +67,6 @@ class BingoCard:
             "bingo_lines": list(self.bingo_lines) 
         }
 
-#def create_bingo_card_manually():
-    st.subheader("ビンゴカードの手動登録")
-
-    # Get card number
-    # st.session_state.card_number_input をリセット対象にする
-    card_number = st.text_input("＊カード番号を入力してください", key="card_number_input")
-    
-    # Get bingo numbers
-    numbers = []
-    rows_valid = True
-    for i in range(5):
-        if i != 2:
-            prompt = f"行{i+1}の数字を空白区切りで入力してください (例: 13 22 42 49 61)"
-        else:
-            prompt = "※真ん中（FREE）は 0 を入力してください (例: 13 22 0(=FREE) 49 61)"
-        
-        # st.session_state.row_input_i をリセット対象にする
-        row = st.text_input(prompt, key=f"row_input_{i}")
-        
-        try:
-            if row:
-                row_numbers = [int(num) for num in row.split()]
-                if len(row_numbers) == 5:
-                    numbers.append(row_numbers)
-                else:
-                    rows_valid = False
-        except ValueError:
-            rows_valid = False
-
-    # Create BingoCard object only if all inputs are valid
-    if card_number and len(numbers) == 5 and rows_valid:
-        return BingoCard(card_number, numbers)
-    return None
-
 def create_bingo_display(card):
     # Create DataFrame for display
     display_data = []
