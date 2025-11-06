@@ -208,24 +208,30 @@ def main():
     # registration_options = ["今はしない", "手動入力", "画像認識(準備中)"] 
     # registration_option = st.selectbox(...)
 
-    st.subheader("📝 ビンゴカードの管理モード")
+    st.subheader("⚙️ **ビンゴカードの管理モード**")
     col_reg_btn, col_start_btn, col_other_btn = st.columns([1, 1, 1])
 
+    is_reg_mode = st.session_state.registration_mode # 現在の状態
+
     with col_reg_btn:
-        # カードを登録するモードに入るボタン
-        if st.button("▶️ カード登録フォームを開く", type="primary" if not st.session_state.registration_mode else "secondary", use_container_width=True):
+       # カードを登録するモードに入るボタン
+        if st.button("📝 カード登録", 
+                     type="primary" if is_reg_mode else "secondary", # 登録モードなら青
+                     use_container_width=True):
             st.session_state.registration_mode = True
             st.rerun()
 
     with col_start_btn:
         # ビンゴモード（マーク画面）に入るボタン
-        if st.button("🎯 ビンゴマーク画面へ", type="primary" if st.session_state.registration_mode else "secondary", use_container_width=True):
+        if st.button("🎯 番号マーク", 
+                     type="primary" if not is_reg_mode else "secondary", # ビンゴモードなら青
+                     use_container_width=True):
             st.session_state.registration_mode = False
             st.rerun()
             
     with col_other_btn:
         st.button("🖼️ 画像認識 (準備中)", disabled=True, use_container_width=True)
-
+        
     st.markdown("---") # 区切り線
 
     # Manual card registration (登録モードの場合にのみ表示)
@@ -274,7 +280,7 @@ def main():
         st.subheader("🎯 今、呼ばれた番号")
         col1, col2 = st.columns([1, 5])
         with col1:
-            number = st.number_input("番号を入力してください (1-75):", min_value=1, max_value=75, step=1, key="called_number_input")
+            number = st.number_input("🔢 **番号を入力してください** (1-75):", min_value=1, max_value=75, step=1, key="called_number_input")
         with col2:
             if st.button("✅ マークする", type="primary"):
                 if number in st.session_state.used_numbers:
@@ -304,18 +310,19 @@ def main():
                         save_cards(st.session_state.cards, USER_DATA_FILE)
 
     # Display used numbers
-    st.subheader("🗒️ これまでに呼ばれた番号")
-    used_numbers_str = ", ".join(map(str, sorted(list(st.session_state.used_numbers))))
-    st.markdown(f"`{used_numbers_str}`")
-
-    # Display Bingo'd card numbers
-    st.subheader("BINGOになったカードまとめ")
-    bingo_card_numbers = [card.card_number for card in st.session_state.cards if card.bingo_lines]
-    bingo_card_numbers_str = ", ".join(map(str, sorted(bingo_card_numbers)))
-    st.markdown(f"`{bingo_card_numbers_str}`")
+    if not st.session_state.registration_mode: # 【追加】ビンゴモードのみ表示
+        st.subheader("🗒️ **これまでに呼ばれた番号**")
+        used_numbers_str = ", ".join(map(str, sorted(list(st.session_state.used_numbers))))
+        st.markdown(f"`{used_numbers_str}`")
+        
+        # Display Bingo'd card numbers
+        st.subheader("👑 **BINGOになったカード番号**")
+        bingo_card_numbers = [card.card_number for card in st.session_state.cards if card.bingo_lines]
+        bingo_card_numbers_str = ", ".join(map(str, sorted(bingo_card_numbers)))
+        st.markdown(f"`{bingo_card_numbers_str}`")
     
     # Display cards
-    st.subheader("～～ビンゴカード一覧～～")
+    st.subheader("📋 **ビンゴカード一覧**")
     for i, card in enumerate(st.session_state.cards):
         st.write(f"Card No.{card.card_number}")
         st.dataframe(create_bingo_display(card), use_container_width=True)
