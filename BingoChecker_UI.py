@@ -157,7 +157,7 @@ def main():
         # メイン画面にコンテナを配置して入力エリアを作成
         with st.container():
             st.subheader("🔑 アクセスID設定")
-            st.warning("アクセスIDは、お客様ご自身のデータ（ビンゴカードやマーク状態）を分離・保存するために必要です。任意の半角英数字を入力してください。")
+            st.warning("アクセスIDは、お客様ご自身のデータ（ビンゴカードやマーク状態）を分離・保存するために必要です。同じアクセスIDを使用することで、任意の端末で同期することができます。")
             
             col_input, col_button = st.columns([3, 1])
             with col_input:
@@ -196,12 +196,24 @@ def main():
         st.session_state.reset_form = False
 
     # Manual card registration
-    # registration_option の selectbox の定義を修正
+    # registration_mode_select の初期値/現在値を制御する
+    # st.selectboxのindex引数に反映させるための初期化
+    if 'registration_mode_select_index' not in st.session_state:
+         st.session_state['registration_mode_select_index'] = 0 # 初期は「手動入力」
+
+    registration_options = ["手動入力", "今はしない", "画像認識(準備中)"]
     registration_option = st.selectbox(
         "ビンゴカードの登録方法を選択", 
-        ["手動入力", "今はしない", "画像認識(準備中)"], # 順番を変更し、「今はしない」を登録後に切り替えるターゲットにする
-        key="registration_mode_select" # キーを追加し、プログラムから値を操作できるようにする
+        registration_options, 
+        index=st.session_state.registration_mode_select_index, # セッションステートの値を使用
+        key="registration_mode_select" # キーはそのまま
     )
+    
+    # 登録後に index を 1 に設定しているため、手動入力セクションをスキップする
+    if st.session_state.registration_mode_select_index == 1:
+        st.session_state.registration_mode_select_index = 0 # 次回のためにリセット
+        registration_option = "今はしない" # selectbox の表示とロジックを同期
+        
     if registration_option == "手動入力":
         new_card = create_bingo_card_manually()
         if st.button("カードを登録する"):
@@ -230,7 +242,8 @@ def main():
                             del st.session_state[key]
                         
                     # 2. セレクトボックスの値を「今はしない」に自動変更
-                    st.session_state.registration_mode_select = "今はしない"
+                    if "registration_mode_select" in st.session_state:
+                         st.session_state["registration_mode_select_index"] = 1 # 「今はしない」のインデックス (0始まり)
 
                     # 3. 再描画で変更を反映
                     st.rerun() # ★フォームクリアとセレクトボックス変更のために必要です
@@ -299,7 +312,7 @@ def main():
             st.success(f"カード No.{removed_card_number} を削除しました")
             st.rerun() # 削除後に即座に表示を更新するためリロード
     
-    st.write("©egumon2022 2025/11/7 version_10", unsafe_allow_html=True)
+    st.write("©egumon2022 2025/11/7 version_11", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
