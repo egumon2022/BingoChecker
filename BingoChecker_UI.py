@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Nov  9 17:00:00 2024
+Renewed on Fri Nov  7 13:30:00 2025
 
 @author: egumon
 """
@@ -147,18 +148,18 @@ def load_cards(data_file): # <-- data_file を引数に追加
 
 def reset_registration_fields():
     """入力フィールドのセッションステートキーを削除するコールバック"""
-    if "card_number_input" in st.session_state:
-         del st.session_state["card_number_input"]
-    for i in range(5):
-        key = f"row_input_{i}"
-        if key in st.session_state:
-            del st.session_state[key]
-    
-    # 成功メッセージキーも削除し、表示を消す
+    # 成功メッセージキーを削除（消す）
     if 'last_registered_card' in st.session_state:
         del st.session_state['last_registered_card']
-    # 【追加】リロード要求フラグを立てる
-    st.session_state['do_rerun_after_reset'] = True
+        
+    # 【最重要】強制リセット処理を開始するフラグを立て、モードを一時的に切り替える
+    st.session_state['reset_in_progress'] = True
+    st.session_state['registration_mode'] = False # 一時的にビンゴモードへ切り替え
+    
+    # フォーム内のキー削除は不要（モード切り替えによるリセットに任せるため）
+    
+    # 強制的に再描画し、モード切り替えを発生させる
+    st.rerun()
         
 def main():
     # layout Setting
@@ -166,10 +167,13 @@ def main():
     # Title for APP
     st.title("BINGO GAME Checker")
     st.markdown(" <br> ********************************", unsafe_allow_html=True)
-    # 【新規追加】リロード要求フラグのチェック
-    if 'do_rerun_after_reset' in st.session_state and st.session_state['do_rerun_after_reset']:
-        st.session_state['do_rerun_after_reset'] = False # フラグをすぐに下げる
-        st.rerun() # フォームリセットの変更を反映させるために強制リロード
+    # 【新規追加】リセット処理中のチェックとモード復帰
+    if 'reset_in_progress' in st.session_state and st.session_state['reset_in_progress']:
+        st.session_state['reset_in_progress'] = False # フラグを下げる
+        st.session_state['registration_mode'] = True # モードを元に戻す
+        
+        # 2回目のリロードで、空になったフォームを表示
+        st.rerun()
     # 【修正部分】アクセスIDの入力とセッションステートへの保存
     if 'access_id' not in st.session_state:
         # メイン画面にコンテナを配置して入力エリアを作成
