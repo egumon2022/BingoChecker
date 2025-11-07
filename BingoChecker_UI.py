@@ -191,22 +191,10 @@ def main():
     if 'used_numbers' not in st.session_state:
         st.session_state.used_numbers = set()
 
-    # 【削除】フォームリセットフラグの初期化は不要
-    # if 'reset_form' not in st.session_state:
-    #     st.session_state.reset_form = False
-
     # 【新規追加】登録モードの状態管理
     if 'registration_mode' not in st.session_state:
         # False: ビンゴモード (初期状態) / True: 登録モード
         st.session_state.registration_mode = False 
-        
-    # 【削除】旧バージョンのプルダウン制御ロジックは不要
-    # if 'registration_mode_select_index' not in st.session_state:
-    #      st.session_state['registration_mode_select_index'] = 0 
-
-    # 【削除】旧バージョンのプルダウンウィジェット全体を削除
-    # registration_options = ["今はしない", "手動入力", "画像認識(準備中)"] 
-    # registration_option = st.selectbox(...)
 
     st.subheader("⚙️ **ビンゴカードの管理モード**")
     col_reg_btn, col_start_btn, col_other_btn = st.columns([1, 1, 1])
@@ -238,10 +226,11 @@ def main():
     if st.session_state.registration_mode:
         
         # 連続登録しやすいように、登録後もフォームを維持
+        st.subheader("✍️ **カード登録フォーム**") # ヘッダーをここで明確に表示
         
         new_card = create_bingo_card_manually()
-        # ボタンのキーは不要なので削除
-        if st.button("💾 このカードを登録し、次へ", type="primary"): 
+        
+        if st.button("💾 このカードを登録し、次へ", type="primary", key="register_card_submit"): # キーを追加
             if new_card is not None:
                 if any(card.card_number == new_card.card_number for card in st.session_state.cards):
                     st.warning("このカード番号は既に登録されています")
@@ -249,32 +238,42 @@ def main():
                     st.session_state.cards.append(new_card)
                     save_cards(st.session_state.cards, USER_DATA_FILE)
 
-                    # 🚀 登録後の動作: フォームはクリアし、モードは維持
-                    st.success(
-                        f"🎉 **カード No.{new_card.card_number}** が登録されました！"
-                        f"引き続き、次のカードを登録できます。"
-                    )
+                    # 登録成功メッセージ用のキーを設定
+                    st.session_state.last_registered_card = new_card.card_number
                     
-                    # 入力フィールドをクリア（連続登録のためにフォームをリセット）
-                    if "card_number_input" in st.session_state:
-                         del st.session_state["card_number_input"]
-                         
-                    for i in range(5):
-                        key = f"row_input_{i}"
-                        if key in st.session_state:
-                            del st.session_state[key]
-                        
-                    # フォームのリセットを反映させるために再描画
-                    #st.rerun() 
+                    # フォームのリセットとメッセージ表示のために再描画
+                    st.rerun() 
             else:
                 st.error("全ての入力フィールドを正しく入力してください")
-        
-        st.markdown("---")
-    
-    # 【削除】プルダウンでの手動入力/今はしない の判定ロジックはすべて削除
-    # elif registration_option == "今はしない":
-    #     pass
 
+        st.markdown("---")
+        
+        # 登録成功メッセージとリセットボタンの設置
+        if 'last_registered_card' in st.session_state:
+            card_num = st.session_state.last_registered_card
+            
+            st.success(
+                f"🎉 **カード No.{card_num}** が登録されました！"
+                f"続けて次のカードを登録できます。"
+            )
+            
+            # 【新規追加】リセットボタン (入力欄を確実にクリアする役割)
+            if st.button("🔄 続けて登録するために入力欄をクリアする", key="reset_reg_form"):
+                
+                # フォーム内の全ての入力ウィジェットのキーを削除
+                if "card_number_input" in st.session_state:
+                     del st.session_state["card_number_input"]
+                for i in range(5):
+                    key = f"row_input_{i}"
+                    if key in st.session_state:
+                        del st.session_state[key]
+                        
+                # 成功メッセージキーも削除し、表示を消す
+                del st.session_state['last_registered_card'] 
+                
+                # 強制的に再描画し、入力欄を空にする
+                st.rerun()
+                
     # Display called numbers
     if not st.session_state.registration_mode: # 【条件追加】ビンゴモードのみ表示
         st.subheader("🎯 今、呼ばれた番号")
