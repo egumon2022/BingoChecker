@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Nov  9 17:00:00 2024
-Renewed on Fri Nov  7 13:30:00 2025
+Renewed on Fri Nov  7 13:30:00 2025　入力フォームをクリアできるように調整するが失敗
+Renewed on Fri Nov  7 21:00:00 2025　とりあえず、上記の機能を削除し、追加で登録する際の誘導を記載
 
 @author: egumon
 """
@@ -94,6 +95,12 @@ def create_bingo_card_manually():
                     numbers.append(row_numbers)
                 else:
                     rows_valid = False
+            # 【重要】入力がない場合もrows_validをFalseに保ち、完全な入力を要求
+            elif not row and i != 2:
+                 rows_valid = False
+            # 真ん中の行で入力がない場合（ただし、これは0でチェックされるので基本的に問題ない）
+            elif not row and i == 2:
+                 rows_valid = False
         except ValueError:
             rows_valid = False
 
@@ -145,21 +152,6 @@ def load_cards(data_file): # <-- data_file を引数に追加
             card.bingo_lines = set(d['bingo_lines']) # setに戻す
             cards.append(card)
         return cards
-
-def reset_registration_fields():
-    """入力フィールドのセッションステートキーを削除するコールバック"""
-    # 成功メッセージキーを削除（消す）
-    if 'last_registered_card' in st.session_state:
-        del st.session_state['last_registered_card']
-        
-    # 【最重要】強制リセット処理を開始するフラグを立て、モードを一時的に切り替える
-    st.session_state['reset_in_progress'] = True
-    st.session_state['registration_mode'] = False # 一時的にビンゴモードへ切り替え
-    
-    # フォーム内のキー削除は不要（モード切り替えによるリセットに任せるため）
-    
-    # 強制的に再描画し、モード切り替えを発生させる
-    st.rerun()
         
 def main():
     # layout Setting
@@ -167,13 +159,7 @@ def main():
     # Title for APP
     st.title("BINGO GAME Checker")
     st.markdown(" <br> ********************************", unsafe_allow_html=True)
-    # 【新規追加】リセット処理中のチェックとモード復帰
-    if 'reset_in_progress' in st.session_state and st.session_state['reset_in_progress']:
-        st.session_state['reset_in_progress'] = False # フラグを下げる
-        st.session_state['registration_mode'] = True # モードを元に戻す
-        
-        # 2回目のリロードで、空になったフォームを表示
-        st.rerun()
+    
     # 【修正部分】アクセスIDの入力とセッションステートへの保存
     if 'access_id' not in st.session_state:
         # メイン画面にコンテナを配置して入力エリアを作成
@@ -251,8 +237,8 @@ def main():
         st.subheader("✍️ **カード登録フォーム**") # ヘッダーをここで明確に表示
         
         new_card = create_bingo_card_manually()
-        # 登録ボタン
-        if st.button("💾 このカードを登録し、次へ", type="primary", key="register_card_submit"): # キーを追加
+        # 【修正】ボタン名を「このカードを登録」に変更
+        if st.button("💾 このカードを登録", type="primary", key="register_card_submit"): # キーを追加
             if new_card is not None:
                 if any(card.card_number == new_card.card_number for card in st.session_state.cards):
                     st.warning("このカード番号は既に登録されています")
@@ -262,9 +248,8 @@ def main():
 
                     # 登録成功メッセージ用のキーを設定
                     st.session_state.last_registered_card = new_card.card_number
-                    # 入力欄をリセット
-                    reset_registration_fields()
-                    # フォームのリセットとメッセージ表示のために再描画
+                    
+                    # 成功メッセージ表示のために再描画
                     st.rerun()
             else:
                 st.error("全ての入力フィールドを正しく入力してください")
@@ -274,19 +259,14 @@ def main():
         # 登録成功メッセージとリセットボタンの設置
         if 'last_registered_card' in st.session_state:
             card_num = st.session_state.last_registered_card
-            st.success(
-                f"🎉 **カード No.{card_num}** が登録されました！"
-                f"続けて次のカードを登録できます。"
+            # 【修正】メッセージを「登録できました！」に変更
+            st.success(f"🎉 **カード No.{card_num}** を登録できました！")
+            # 【新規追加】次の操作手順の説明
+            st.info(
+                "次のカードを登録するには、一度 **「🎯 番号マーク」** ボタンを押し、"
+                "その後すぐに **「📝 カード登録」** ボタンを押し直してください。フォームがリセットされます。"
+                "入力フォームを自動でクリアする機能の実装が間に合わなかった💦ゴメンネ、、、"
             )
-
-        # 【修正】リセットボタンを常に表示し、クリア処理をコールバックで実行
-        if st.button(
-            "🔄 入力内容をクリアする", # ボタン名を少し変更
-            key="reset_reg_form",
-            on_click=reset_registration_fields # コールバックを登録
-        ):
-            # コールバック内で st.rerun() が実行されるため、ここでは pass
-            pass
             
     # Display called numbers
     if not st.session_state.registration_mode: # 【条件追加】ビンゴモードのみ表示
