@@ -251,7 +251,7 @@ def main():
         st.subheader("✍️ **カード登録フォーム**") # ヘッダーをここで明確に表示
         
         new_card = create_bingo_card_manually()
-        
+        # 登録ボタン
         if st.button("💾 このカードを登録し、次へ", type="primary", key="register_card_submit"): # キーを追加
             if new_card is not None:
                 if any(card.card_number == new_card.card_number for card in st.session_state.cards):
@@ -274,21 +274,20 @@ def main():
         # 登録成功メッセージとリセットボタンの設置
         if 'last_registered_card' in st.session_state:
             card_num = st.session_state.last_registered_card
-            
             st.success(
                 f"🎉 **カード No.{card_num}** が登録されました！"
                 f"続けて次のカードを登録できます。"
             )
 
-            # 【修正】リセットボタンを on_click コールバックで処理する
-            if st.button(
-                "🔄 続けて登録するために入力欄をクリアする", 
-                key="reset_reg_form",
-                on_click=reset_registration_fields # キー削除を実行
-            ):
-                # on_clickがあるため、ここには何も書かない（または pass）
-                pass
-                
+        # 【修正】リセットボタンを常に表示し、クリア処理をコールバックで実行
+        if st.button(
+            "🔄 入力内容をクリアする", # ボタン名を少し変更
+            key="reset_reg_form",
+            on_click=reset_registration_fields # コールバックを登録
+        ):
+            # コールバック内で st.rerun() が実行されるため、ここでは pass
+            pass
+            
     # Display called numbers
     if not st.session_state.registration_mode: # 【条件追加】ビンゴモードのみ表示
         st.subheader("🎯 今、呼ばれた番号")
@@ -350,7 +349,7 @@ def main():
             st.success(f"カード No.{removed_card_number} を削除しました")
             st.rerun() # 削除後に即座に表示を更新するためリロード
     
-    st.write("©egumon2022 2025/11/7 version_11", unsafe_allow_html=True)
+    st.write("©egumon2022 2025/11/7 version_2025", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
