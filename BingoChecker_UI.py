@@ -157,9 +157,6 @@ def reset_registration_fields():
     # 成功メッセージキーも削除し、表示を消す
     if 'last_registered_card' in st.session_state:
         del st.session_state['last_registered_card']
-    # 【追加】コールバック内で強制的に再描画する
-    # on_clickで使用する場合、競合を防ぐために実験的な API を使用します
-    st.experimental_rerun()
         
 def main():
     # layout Setting
@@ -258,7 +255,7 @@ def main():
                     st.session_state.last_registered_card = new_card.card_number
                     
                     # フォームのリセットとメッセージ表示のために再描画
-                    #st.rerun() # 【削除】リセットボタンのコールバックに任せるため削除
+                    st.rerun()
             else:
                 st.error("全ての入力フィールドを正しく入力してください")
 
@@ -277,7 +274,7 @@ def main():
             if st.button(
                 "🔄 続けて登録するために入力欄をクリアする", 
                 key="reset_reg_form",
-                on_click=reset_registration_fields # コールバックを登録
+                on_click=reset_registration_fields # キー削除を実行
             ):
                 # on_clickがあるため、ここには何も書かない（または pass）
                 pass
