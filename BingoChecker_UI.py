@@ -157,6 +157,8 @@ def reset_registration_fields():
     # 成功メッセージキーも削除し、表示を消す
     if 'last_registered_card' in st.session_state:
         del st.session_state['last_registered_card']
+    # 【追加】リロード要求フラグを立てる
+    st.session_state['do_rerun_after_reset'] = True
         
 def main():
     # layout Setting
@@ -164,7 +166,10 @@ def main():
     # Title for APP
     st.title("BINGO GAME Checker")
     st.markdown(" <br> ********************************", unsafe_allow_html=True)
-    
+    # 【新規追加】リロード要求フラグのチェック
+    if 'do_rerun_after_reset' in st.session_state and st.session_state['do_rerun_after_reset']:
+        st.session_state['do_rerun_after_reset'] = False # フラグをすぐに下げる
+        st.rerun() # フォームリセットの変更を反映させるために強制リロード
     # 【修正部分】アクセスIDの入力とセッションステートへの保存
     if 'access_id' not in st.session_state:
         # メイン画面にコンテナを配置して入力エリアを作成
