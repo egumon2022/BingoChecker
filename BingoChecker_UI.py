@@ -112,22 +112,49 @@ def create_bingo_card_manually():
 def create_bingo_display(card):
     # Create DataFrame for display
     display_data = []
+
+    # 【変更点1】マーク状態を保持する2Dリストも作成する
+    marked_flags = []
     if len(card.numbers) != 5 or any(len(row) != 5 for row in card.numbers):
         st.error("Invalid bingo card format: The card should have a 5x5 grid of numbers.")
         return pd.DataFrame()
 
     for i in range(5):
         row = []
+        row_flags = [] # マーク状態フラグの行
         for j in range(5):
+            is_marked = card.marked[i][j] # マーク状態を取得
+            
             if i == 2 and j == 2:
                 cell = "FREE"
             else:
                 number = card.numbers[i][j]
-                marked = card.marked[i][j]
-                cell = f"{number}{'✓' if marked else ''}"
+                # 【削除】チェックマーク（'✓'）の表示を削除
+                cell = f"{number}"
             row.append(cell)
+            row_flags.append(is_marked) # フラグを保持
         display_data.append(row)
-    return pd.DataFrame(display_data)
+        marked_flags.append(row_flags) # フラグを保持
+    df = pd.DataFrame(display_data)
+    
+    # 【変更点2】Stylerを適用して背景色を設定
+    
+    # マーカー（True/False）のDataFrameを作成
+    marked_df = pd.DataFrame(marked_flags)
+
+    # セルがTrue（マーク済み）の場合に背景色を 'lightgray' に設定する関数
+    def highlight_marked(val):
+        color = 'background-color: lightgray' if val else ''
+        return color
+
+    # Stylerを適用して、マーク済みのセルの背景色を灰色に変更
+    # axis=None で要素ごとに適用
+    styled_df = df.style.apply(
+        lambda x: marked_df.applymap(highlight_marked), # marked_dfを使って色を決定
+        axis=None
+    )
+    
+    return styled_df # スタイルが適用されたDataFrameを返す
 
 def save_cards(cards, data_file): # <-- data_file を引数に追加
     """ビンゴカードのリストをJSONファイルに保存する"""
@@ -318,6 +345,7 @@ def main():
     st.subheader("📋 **ビンゴカード一覧**")
     for i, card in enumerate(st.session_state.cards):
         st.write(f"Card No.{card.card_number}")
+        # スタイル付きDataFrameをそのまま渡す
         st.dataframe(create_bingo_display(card), use_container_width=True)
         if card.bingo_lines:
             st.write("ビンゴライン:", list(card.bingo_lines))
@@ -329,7 +357,7 @@ def main():
             st.success(f"カード No.{removed_card_number} を削除しました")
             st.rerun() # 削除後に即座に表示を更新するためリロード
     
-    st.write("©egumon2022 2025/11/7 version_2025", unsafe_allow_html=True)
+    st.write("©egumon2022 2025/11/7 version_2025最新ver", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
