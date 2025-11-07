@@ -258,7 +258,8 @@ def main():
 
                     # 登録成功メッセージ用のキーを設定
                     st.session_state.last_registered_card = new_card.card_number
-                    
+                    # 入力欄をリセット
+                    reset_registration_fields()
                     # フォームのリセットとメッセージ表示のために再描画
                     st.rerun()
             else:
